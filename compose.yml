@@ -1,5 +1,4 @@
 version: "3.8"
-
 services:
   frontend:
     build:
@@ -15,6 +14,8 @@ services:
       - "traefik.http.routers.frontend.rule=Host(`msoluwademilade.top`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8080"
     networks:
       - app-network
     depends_on:
@@ -35,15 +36,14 @@ services:
       - "traefik.http.routers.auth-api.rule=Host(`msoluwademilade.top`) && PathPrefix(`/api/auth`)"
       - "traefik.http.routers.auth-api.entrypoints=websecure"
       - "traefik.http.routers.auth-api.tls=true"
+      - "traefik.http.routers.auth-api.tls.certresolver=myresolver"
+      - "traefik.http.services.auth-api.loadbalancer.server.port=8081"
+      - "traefik.http.middlewares.auth-api-strip.stripprefix.prefixes=/api/auth"
+      - "traefik.http.routers.auth-api.middlewares=auth-api-strip"
     networks:
       - app-network
     depends_on:
       - users-api
-        # condition: service_healthy
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-    #   interval: 30s
-    #   retries: 3
 
   users-api:
     build:
@@ -58,12 +58,12 @@ services:
       - "traefik.http.routers.users-api.rule=Host(`msoluwademilade.top`) && PathPrefix(`/api/users`)"
       - "traefik.http.routers.users-api.entrypoints=websecure"
       - "traefik.http.routers.users-api.tls=true"
+      - "traefik.http.routers.users-api.tls.certresolver=myresolver"
+      - "traefik.http.services.users-api.loadbalancer.server.port=8083"
+      - "traefik.http.middlewares.users-api-strip.stripprefix.prefixes=/api/users"
+      - "traefik.http.routers.users-api.middlewares=users-api-strip"
     networks:
       - app-network
-    # healthcheck:
-    #   test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
-    #   interval: 30s
-    #   retries: 3
 
   todos-api:
     build:
@@ -81,11 +81,14 @@ services:
       - "traefik.http.routers.todos-api.rule=Host(`msoluwademilade.top`) && PathPrefix(`/api/todos`)"
       - "traefik.http.routers.todos-api.entrypoints=websecure"
       - "traefik.http.routers.todos-api.tls=true"
+      - "traefik.http.routers.todos-api.tls.certresolver=myresolver"
+      - "traefik.http.services.todos-api.loadbalancer.server.port=8082"
+      - "traefik.http.middlewares.todos-api-strip.stripprefix.prefixes=/api/todos"
+      - "traefik.http.routers.todos-api.middlewares=todos-api-strip"
     networks:
       - app-network
     depends_on:
       - redis-queue
-        # condition: service_healthy
 
   log-message-processor:
     build:
@@ -98,9 +101,6 @@ services:
       - app-network
     depends_on:
       - redis-queue
-        # condition: service_healthy
-    labels:
-      - "traefik.enable=true"
 
   redis-queue:
     image: redis:alpine
@@ -108,10 +108,6 @@ services:
       - "6379:6379"
     networks:
       - app-network
-    # healthcheck:
-    #   test: ["CMD", "redis-cli", "ping"]
-    #   interval: 30s
-    #   retries: 3
 
   traefik:
     image: traefik:v2.10
@@ -125,6 +121,9 @@ services:
       - "--certificatesresolvers.myresolver.acme.email=oyekanmidemilade2@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--accesslog=true"
+      - "--log.level=DEBUG"
+      - "--certificatesresolvers.myresolver.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
     ports:
       - "80:80"
       - "443:443"
